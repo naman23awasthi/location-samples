@@ -47,6 +47,7 @@ class Utils {
                 .edit()
                 .putBoolean(KEY_REQUESTING_LOCATION_UPDATES, requestingLocationUpdates)
                 .apply();
+
     }
 
     /**

@@ -17,6 +17,7 @@
 package com.google.android.gms.location.sample.locationupdatespendingintent;
 
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -26,11 +27,20 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Build;
+import android.os.Environment;
 import android.preference.PreferenceManager;
+import android.util.Log;
+import android.widget.Toast;
+
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.TaskStackBuilder;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -42,12 +52,82 @@ class Utils {
     final static String KEY_LOCATION_UPDATES_REQUESTED = "location-updates-requested";
     final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
     final static String CHANNEL_ID = "channel_01";
+    final static String FILE_PREFIX = "logs";
+    final static String FILE_SUFFIX = ".txt";
+
+    private final static Object mFileLock = new Object();
+    private static BufferedWriter mFileWriter;
+    private static File mFile;
 
     static void setRequestingLocationUpdates(Context context, boolean value) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putBoolean(KEY_LOCATION_UPDATES_REQUESTED, value)
                 .apply();
+    }
+
+    /**
+     * Start a new file logging process.
+     */
+    static void startNewLog(Context c) {
+        synchronized (mFileLock) {
+            File baseDirectory;
+            baseDirectory = new File(c.getFilesDir(), FILE_PREFIX);
+            baseDirectory.mkdirs();
+
+            SimpleDateFormat formatter = new SimpleDateFormat("yyy_MM_dd_HH_mm_ss");
+            Date now = new Date();
+            String fileName = String.format("%s_%s%s", FILE_PREFIX, formatter.format(now),FILE_SUFFIX);
+            File currentFile = new File(baseDirectory, fileName);
+            String currentFilePath = currentFile.getAbsolutePath();
+            BufferedWriter currentFileWriter;
+            try {
+                currentFileWriter = new BufferedWriter(new FileWriter(currentFile));
+            } catch (IOException e) {
+                logException("Could not open file: " + currentFilePath, e);
+                return;
+            }
+
+            // initialize the contents of the file
+            try {
+                currentFileWriter.write("Latitude,Longitude,datetime");
+                currentFileWriter.newLine();
+            }catch (IOException e) {
+                logException("Unable to close all file streams.", e);
+                return;
+            }
+            mFile = currentFile;
+            mFileWriter = currentFileWriter;
+        }
+    }
+
+    static void logGPSLoc(List<Location> locations){
+        String sb = "";
+        for (Location location : locations) {
+            sb += location.getLatitude() + ", " + location.getLongitude();;
+            SimpleDateFormat formatter = new SimpleDateFormat("HH_mm_ss");
+            Date now = new Date();
+            sb += ", " +  String.format("%s", formatter.format(now));
+        }
+        synchronized (mFileLock) {
+            if (mFileWriter == null) {
+                return;
+            }
+            try {
+                mFileWriter.write(sb);
+                mFileWriter.newLine();
+            } catch (IOException e) {
+                logException("Couldnt Write to file", e);
+            }
+
+        }
+    }
+
+    private static void logException(String errorMessage, Exception e) {
+        Log.e("UTIL", errorMessage, e);
+    }
+    private static void logException(String errorMessage) {
+        Log.e("UTIL", errorMessage);
     }
 
     static boolean getRequestingLocationUpdates(Context context) {
@@ -114,7 +194,9 @@ class Utils {
         }
 
         // Issue the notification
-        mNotificationManager.notify(0, builder.build());
+        Notification n = builder.build();
+        n.flags = Notification.FLAG_ONGOING_EVENT;
+        mNotificationManager.notify(0, n);
     }
 
 

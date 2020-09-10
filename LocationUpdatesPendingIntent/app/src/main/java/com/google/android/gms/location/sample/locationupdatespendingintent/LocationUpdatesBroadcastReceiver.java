@@ -55,6 +55,7 @@ public class LocationUpdatesBroadcastReceiver extends BroadcastReceiver {
                 if (result != null) {
                     List<Location> locations = result.getLocations();
                     Utils.setLocationUpdatesResult(context, locations);
+                    Utils.logGPSLoc(locations);
                     Utils.sendNotification(context, Utils.getLocationResultTitle(context, locations));
                     Log.i(TAG, Utils.getLocationUpdatesResult(context));
                 }

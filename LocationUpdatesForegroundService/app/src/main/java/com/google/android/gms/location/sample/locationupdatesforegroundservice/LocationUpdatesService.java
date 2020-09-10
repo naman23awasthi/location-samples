@@ -82,7 +82,7 @@ public class LocationUpdatesService extends Service {
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 1000;
 
     /**
      * The fastest rate for active location updates. Updates will never be more frequent
@@ -106,7 +106,7 @@ public class LocationUpdatesService extends Service {
     private NotificationManager mNotificationManager;
 
     /**
-     * Contains parameters used by {@link com.google.android.gms.location.FusedLocationProviderApi}.
+     * Contains parameters used by {@link com.google.android.gms.location.FusedLocationProviderClient}.
      */
     private LocationRequest mLocationRequest;
 
@@ -234,7 +234,7 @@ public class LocationUpdatesService extends Service {
         Utils.setRequestingLocationUpdates(this, true);
         startService(new Intent(getApplicationContext(), LocationUpdatesService.class));
         try {
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest,
+mFusedLocationClient.requestLocationUpdates(mLocationRequest,
                     mLocationCallback, Looper.myLooper());
         } catch (SecurityException unlikely) {
             Utils.setRequestingLocationUpdates(this, false);
@@ -294,8 +294,9 @@ public class LocationUpdatesService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setChannelId(CHANNEL_ID); // Channel ID
         }
-
-        return builder.build();
+        Notification n = builder.build();
+        n.flags = Notification.FLAG_ONGOING_EVENT;
+        return n;
     }
 
     private void getLastLocation() {
@@ -327,9 +328,9 @@ public class LocationUpdatesService extends Service {
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
 
         // Update notification content if running as a foreground service.
-        if (serviceIsRunningInForeground(this)) {
-            mNotificationManager.notify(NOTIFICATION_ID, getNotification());
-        }
+        //if (serviceIsRunningInForeground(this)) {
+        mNotificationManager.notify(NOTIFICATION_ID, getNotification());
+        //}
     }
 
     /**
